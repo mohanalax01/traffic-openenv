@@ -15,6 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
+# This tells the system: "Go to server/app.py and run the main() function"
 server = "server.app:main"
 
 [tool.setuptools]
