@@ -15,8 +15,9 @@ dependencies = [
 ]
 
 [project.scripts]
-# This tells the system: "Go to server/app.py and run the main() function"
+# This tells the validator exactly where the file is
 server = "server.app:main"
 
 [tool.setuptools]
+# This tells the builder to include the server folder
 packages = ["server"]
