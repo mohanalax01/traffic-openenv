@@ -53,8 +53,12 @@ def grader():
 def baseline():
     # Helper endpoint to run the baseline agent
     return run_baseline()
+
+# ... your existing FastAPI code ...
+
 def main():
     import uvicorn
+    # This matches the "main" function the validator is looking for
     uvicorn.run(app, host="0.0.0.0", port=7860)
 
 if __name__ == "__main__":
