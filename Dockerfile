@@ -1,14 +1,16 @@
-FROM python:3.10
+FRFROM python:3.9
 
-WORKDIR /app
+WORKDIR /code
 
+# Copy requirements first for faster building
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
+# Copy the rest of the files (including the server folder)
 COPY . .
 
-RUN pip install -r requirements.txt
+# Install the current directory as a package without "editable" mode
+RUN pip install .
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
-# Copy everything from your repo to the container
-COPY . .
-
-# Ensure the server folder is explicitly recognized
-RUN pip install -e .
+# Set the command to run your server
+CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
