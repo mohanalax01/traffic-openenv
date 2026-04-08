@@ -1,0 +1,6 @@
+name: traffic-openenv
+description: Traffic signal optimization environment
+tasks:
+  - easy
+  - medium
+  - hard
