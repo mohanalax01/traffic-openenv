@@ -15,7 +15,6 @@ dependencies = [
 ]
 
 [project.scripts]
-# This MUST point to the function 'main', not the variable 'app'
 server = "server.app:main"
 
 [tool.setuptools]
