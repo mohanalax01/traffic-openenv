@@ -1,13 +1,12 @@
 FROM python:3.10
 
-# Keep the working directory at /app
 WORKDIR /app
 
-# Copy all files from your repo into /app
+# Copy all files to /app root
 COPY . .
 
-# Install dependencies
+# Install all necessary dependencies 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Run the app. Because we are in /app, 'server.app:app' works perfectly.
+# Run uvicorn from the root directory
 CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
