@@ -8,8 +8,8 @@ from grader import grade
 app = FastAPI(title="Traffic OpenEnv API")
 env = TrafficEnv()
 
-# These models define the expected JSON structure for POST requests
-# They prevent the "Field required" error by providing structure and defaults
+# These models define the "Fields" required in the POST body
+# Adding Optional and default values prevents the "Field required" error
 class ResetRequest(BaseModel):
     task: Optional[str] = "easy"
     seed: Optional[int] = None
@@ -23,19 +23,13 @@ def home():
 
 @app.post("/reset")
 def reset(data: ResetRequest):
-    """
-    Handles environment reset. 
-    Matches the POST request from inference.py: requests.post(url, json={"task": "easy"})
-    """
+    # This matches the POST request in inference.py
     observation = env.reset(task=data.task, seed=data.seed)
     return {"observation": observation}
 
 @app.post("/step")
 def step(data: StepRequest):
-    """
-    Handles environment steps.
-    Matches the POST request from inference.py: requests.post(url, json={"action": 0})
-    """
+    # This matches the POST request in inference.py
     obs, reward, done, info = env.step(data.action)
     return {
         "observation": obs,
@@ -48,18 +42,13 @@ def step(data: StepRequest):
 def tasks():
     return {
         "tasks": ["easy", "medium", "hard"],
-        "action_space": {
-            "0": "North-South green",
-            "1": "East-West green"
-        }
+        "action_space": {"0": "North-South green", "1": "East-West green"}
     }
 
 @app.get("/grader")
 def grader_endpoint():
-    # Returns the score based on the current environment state
     return {"score": grade(env)}
 
 @app.get("/baseline")
 def baseline_endpoint():
-    # Runs the baseline policy and returns results
     return run_baseline()
