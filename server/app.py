@@ -1,3 +1,4 @@
+import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
@@ -14,18 +15,12 @@ from grader import grade
 app = FastAPI(title="Traffic OpenEnv API")
 env = TrafficEnv()
 
-# --- Models to prevent "Field required" errors ---
-
 class ResetRequest(BaseModel):
-    # Optional and default value means it won't crash if the body is empty
     task: Optional[str] = "easy"
     seed: Optional[int] = None
 
 class StepRequest(BaseModel):
-    # Action is usually required for a step
     action: int
-
-# --- Endpoints ---
 
 @app.get("/")
 def home():
@@ -33,17 +28,13 @@ def home():
 
 @app.post("/reset")
 def reset(data: ResetRequest = None):
-    # If the validator sends NO body, data will be None, 
-    # so we provide a default ResetRequest()
     if data is None:
         data = ResetRequest()
-        
     observation = env.reset(task=data.task, seed=data.seed)
     return {"observation": observation}
 
 @app.post("/step")
 def step(data: StepRequest):
-    # Matches requests.post(url, json={"action": 0})
     obs, reward, done, info = env.step(data.action)
     return {
         "observation": obs, 
@@ -59,3 +50,16 @@ def baseline_endpoint():
 @app.get("/grader")
 def grader_endpoint():
     return {"score": grade(env)}
+
+# --- THE FIX: Multi-mode deployment requirements ---
+
+def main():
+    """
+    Main function required by the deployment validator.
+    Starts the server on the default Hugging Face port.
+    """
+    uvicorn.run(app, host="0.0.0.0", port=7860)
+
+if __name__ == "__main__":
+    # Ensures main() is callable when the script is run directly
+    main()
