@@ -4,7 +4,7 @@ from typing import Optional
 import sys
 import os
 
-# Adds root to path so it can find env.py
+# Ensures the root is in the path so we can find env.py
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from env import TrafficEnv
@@ -14,24 +14,36 @@ from grader import grade
 app = FastAPI(title="Traffic OpenEnv API")
 env = TrafficEnv()
 
+# --- Models to prevent "Field required" errors ---
+
 class ResetRequest(BaseModel):
+    # Optional and default value means it won't crash if the body is empty
     task: Optional[str] = "easy"
     seed: Optional[int] = None
 
 class StepRequest(BaseModel):
+    # Action is usually required for a step
     action: int
+
+# --- Endpoints ---
 
 @app.get("/")
 def home():
     return {"message": "Traffic OpenEnv API is online"}
 
 @app.post("/reset")
-def reset(data: ResetRequest):
+def reset(data: ResetRequest = None):
+    # If the validator sends NO body, data will be None, 
+    # so we provide a default ResetRequest()
+    if data is None:
+        data = ResetRequest()
+        
     observation = env.reset(task=data.task, seed=data.seed)
     return {"observation": observation}
 
 @app.post("/step")
 def step(data: StepRequest):
+    # Matches requests.post(url, json={"action": 0})
     obs, reward, done, info = env.step(data.action)
     return {
         "observation": obs, 
