@@ -1,37 +1,33 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import sys
-import os
-
-# Ensure the root directory is in the path so we can find env.py
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from env import TrafficEnv
 from baseline import run_baseline
 
-app = FastAPI()
+app = FastAPI(title="Traffic OpenEnv API")
 env = TrafficEnv()
 
-class Action(BaseModel):
+# These models prevent the "missing field" error by clearly defining the body 
+class ActionRequest(BaseModel):
     action: int
 
-class ResetConfig(BaseModel):
+class ResetRequest(BaseModel):
     task: str = "easy"
     seed: int = None
 
 @app.get("/")
 def home():
-    return {"status": "Traffic API Online"}
+    return {"message": "Traffic OpenEnv API running"}
 
 @app.post("/reset")
-def reset(config: ResetConfig):
-    # This matches the POST request in your inference.py
-    obs = env.reset(task=config.task, seed=config.seed)
-    return {"observation": obs}
+def reset(data: ResetRequest):
+    # Extracts 'task' and 'seed' from the JSON body 
+    observation = env.reset(task=data.task, seed=data.seed)
+    return {"observation": observation}
 
 @app.post("/step")
-def step(action: Action):
-    state, reward, done, _ = env.step(action.action)
+def step(data: ActionRequest):
+    # Extracts 'action' from the JSON body 
+    state, reward, done, _ = env.step(data.action)
     return {"state": state, "reward": reward, "done": done}
 
 @app.get("/baseline")
