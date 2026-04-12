@@ -1,73 +1,55 @@
 import os
 import re
-import time
 from openai import OpenAI
 from env import TrafficEnv
 
-# We keep the client empty until the first request
-_client = None
-
-def get_active_client():
-    """
-    Ensures we only create the client once the validator 
-    has injected the API credentials.
-    """
-    global _client
-    if _client is None:
-        api_key = os.environ.get("API_KEY")
-        base_url = os.environ.get("API_BASE_URL")
-        
-        # If the validator is still setting up, we return None to trigger a wait
-        if not api_key or not base_url:
-            return None
-            
-        _client = OpenAI(
-            base_url=base_url,
-            api_key=api_key
-        )
-    return _client
-
 def smart_policy(state):
-    # Attempt to get the client
-    client = get_active_client()
-    
-    # If the client isn't ready (no API_KEY yet), wait briefly
-    if client is None:
-        time.sleep(0.5)
-        client = get_active_client()
-        if client is None:
-            # Absolute fallback if API is still unavailable
-            return 0 if (state["cars"][0] + state["cars"][2]) > (state["cars"][1] + state["cars"][3]) else 1
+    # FORCE read environment variables inside the function
+    # Using os.environ[] without .get() will raise an error if they are missing,
+    # which is actually better for debugging Phase 2.
+    try:
+        api_base = os.environ["API_BASE_URL"]
+        api_key = os.environ["API_KEY"]
+        model_name = os.environ.get("LLM_MODEL", "gpt-4o")
+    except KeyError as e:
+        print(f"CRITICAL ERROR: Environment variable {e} is missing!")
+        # If the environment isn't ready, we return a fallback so the app doesn't crash,
+        # but in Phase 2, these variables MUST be present.
+        return 0
 
-    model_name = os.environ.get("LLM_MODEL", "gpt-4o")
-    
+    # Initialize client EVERY time to ensure the proxy is hit
+    client = OpenAI(
+        base_url=api_base,
+        api_key=api_key
+    )
+
     prompt = (
-        f"North-South cars: {state['cars'][0] + state['cars'][2]}. "
-        f"East-West cars: {state['cars'][1] + state['cars'][3]}. "
-        "Choose '0' (NS Green) or '1' (EW Green). Reply with just the digit."
+        f"Traffic state: {state['cars']}. "
+        "Goal: Minimize congestion. Output 0 for NS green, 1 for EW green. "
+        "Reply with only the digit."
     )
 
     try:
-        # This specific call registers on the LiteLLM proxy
+        # The actual API call the validator monitors
         response = client.chat.completions.create(
             model=model_name,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=2,
-            timeout=10.0 # Prevent hanging if the proxy is slow
+            max_tokens=2
         )
-        content = response.choices[0].message.content.strip()
-        match = re.search(r'\d', content)
+        
+        res_text = response.choices[0].message.content.strip()
+        match = re.search(r'\d', res_text)
         return int(match.group()) if match else 0
+        
     except Exception as e:
-        print(f"Proxy API Error: {e}")
-        # Mathematical fallback
-        if state["cars"][0] + state["cars"][2] > state["cars"][1] + state["cars"][3]:
-            return 0
-        return 1
+        print(f"API Call Failed: {e}")
+        # Fallback logic
+        return 0 if (state["cars"][0] + state["cars"][2]) > (state["cars"][1] + state["cars"][3]) else 1
 
 def run_baseline():
     results = {}
-    for task in ["easy", "medium", "hard"]:
+    tasks = ["easy", "medium", "hard"]
+    for task in tasks:
         env = TrafficEnv()
         state = env.reset(task, seed=42)
         done = False
@@ -77,8 +59,5 @@ def run_baseline():
 
         final_queue = sum(env.state.get("cars", [0,0,0,0]))
         score = max(0, 1 - (final_queue / 100))
-        results[task] = {
-            "final_queue": final_queue,
-            "score": round(score, 3)
-        }
+        results[task] = {"score": round(score, 3)}
     return results
